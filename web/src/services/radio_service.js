@@ -1,3 +1,8 @@
+export function fetchBufferSize(ssid) {
+    return fetch("http://localhost:7979/buffer_size/" + ssid)
+}
+
+
 function fetchStationInfo() {
     return mock_data
 }
