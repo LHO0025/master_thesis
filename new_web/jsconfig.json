@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./src/*"]
+      },
+      "checkJs": true,
+      "jsx": "react-jsx",
+      "target": "esnext",
+      "module": "esnext",
+    }
+}
+  

@@ -1,22 +1,72 @@
-import './index.css';
-import { Button } from "@/components/ui/button"
-import { useAudioPlayer } from 'react-use-audio-player';
-import { mock_data } from './services/radio_service';
-import StationsDisplay from './components/StationsDisplay';
-import { useEffect, useRef, useState } from 'react';
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { useEffect, useState } from 'react';
+import * as RadioService from "services/radio_service";
 import Player from './components/Player';
+import StationsDisplay from './components/StationsDisplay';
+import './index.css';
+
+import RadioSidebar from './components/Test';
 
 function App() {
-  const [stationsInfo, setStationsInfo] = useState([mock_data])
+  const [error, setError] = useState(null)
+  const [currentStation, setCurrentStation] = useState(null)
+  const [stations, setStations] = useState([])
+
+  useEffect(() => {
+    RadioService.fetchStationInfo()
+      .then(res => res.json())
+      .then(response => {
+        setStations(extractServices(response.services))
+      })
+      .catch((error) => {
+        setError(error)
+      })
+  }, [])
+
+
+  function extractServices(array) {
+    let result = array.map(service => {
+      return {
+        labels: service.label,
+        url_mp3: service.url_mp3,
+        sid: service.sid,
+        bitrate: service.components[0].subchannel.bitrate,
+        language: service.components[0].subchannel.languagestring,
+        pty: service.ptystring,
+      }
+    })
+    return result
+  }
 
   return (
-    <div className="p-4">
+    <>
+      {
+        error ?
+          <div>
+            <span>There was an error</span>
+          </div>
+          :
+          <div className="p-4">
+            <SidebarProvider style={{
+              "--sidebar-width": "20rem",
+              "--sidebar-width-mobile": "20rem",
+            }}>
+              <RadioSidebar radioStations={stations} setCurrentStation={setCurrentStation} />
+              <main>
+                <SidebarTrigger />
 
-      <StationsDisplay stationsInfo={stationsInfo}></StationsDisplay>
-      <Player></Player>
+                {currentStation &&
+                  <>
+                    <StationsDisplay currentStation={currentStation}></StationsDisplay>
+                    <Player currentStation={currentStation}></Player>
+                  </>
+                }
+              </main>
+            </SidebarProvider>
 
-
-    </div>
+          </div>
+      }
+    </>
   );
 }
 
