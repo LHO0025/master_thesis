@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 
 const LIVE_AUDIO_OFFFSET = 240000
 const SAMPLE_RATE = 48000;
-const BASE_SERVER_URL = import.meta.env.VITE_SERVER_BASE_URL
+const SERVER_URL = import.meta.env.VITE_SERVER_URL
 
 const Player = ({ currentStation, multiplexes }) => {
   const [streamURL, setStreamURL] = useState("")
@@ -35,7 +35,7 @@ const Player = ({ currentStation, multiplexes }) => {
         // console.log("buffer", res)
         setBufferSize(res.bufferSize)
         setPlaybackValue(getPlaybackTimeInMs(res.bufferSize))
-        setStreamURL(BASE_SERVER_URL + ":" + currentStationPort + "/cache_mp3/" + currentStation.sid + "/" + LIVE_AUDIO_OFFFSET)
+        setStreamURL(SERVER_URL + "/cache_mp3/" + currentStationPort + "/" + currentStation.sid + "/" + LIVE_AUDIO_OFFFSET)
       })
       .catch(e => {
         console.log("error", e)
@@ -120,7 +120,7 @@ const Player = ({ currentStation, multiplexes }) => {
   function onValueCommit(value) {
     let newIndex = (((getPlaybackTimeInMs(bufferSize) - value) * SAMPLE_RATE) / 1000) + LIVE_AUDIO_OFFFSET
     setCurrentIndex(newIndex)
-    setStreamURL(BASE_SERVER_URL + ":" + currentStationPort + "/cache_mp3/" + currentStation.sid + "/" + newIndex)
+    setStreamURL(SERVER_URL + "/cache_mp3/" + currentStationPort + "/" + currentStation.sid + "/" + newIndex)
   }
 
   function toggleMute() {
@@ -133,9 +133,12 @@ const Player = ({ currentStation, multiplexes }) => {
   }
 
   return (
-    <div className='flex flex-col gap-8 mt-8 items-start' >
+    <div className='flex flex-col gap-8 mt-8 items-start'>
       {currentStation.station_text}
+
+
       <audio ref={audioRef} src={streamURL} className='hidden' controls autoPlay />
+
       <Button onClick={toggleMute}>Toggle mute</Button>
       {
         'Playback: -' + formatTime(playbackValue)

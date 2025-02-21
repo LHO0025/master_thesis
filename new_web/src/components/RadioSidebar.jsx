@@ -37,6 +37,16 @@ export default function RadioSidebar({ multiplexes, setCurrentStation }) {
     //     setFilteredStations(filtered)
     // }, [searchTerm, radioStations])
 
+    React.useEffect(() => {
+        console.log("multiplexes", multiplexes)
+    }, [multiplexes])
+
+    function evaluate(multiplexes) {
+        multiplexes.some(multiplex => {
+            return multiplex.stations && multiplex.stations.length > 0
+        })
+    }
+
     return (
         <Sidebar>
             <SidebarHeader>
@@ -61,37 +71,42 @@ export default function RadioSidebar({ multiplexes, setCurrentStation }) {
             <SidebarContent>
 
                 {
-                    multiplexes.map(multiplex => {
-                        return <>
-                            <SidebarGroup className="!p-0">
-                                <SidebarGroupLabel>{multiplex.label}</SidebarGroupLabel>
-                                <SidebarGroupContent>
-                                    <SidebarMenu >
+                    (multiplexes && multiplexes.length > 0 && multiplexes.some(multiplex => multiplex.stations?.length > 0)) ?
+                        multiplexes.map(multiplex => {
+                            return <>
+                                <SidebarGroup className="!p-0">
+                                    <SidebarGroupLabel>{multiplex.label}</SidebarGroupLabel>
+                                    <SidebarGroupContent>
+                                        <SidebarMenu >
 
-                                        {
-                                            multiplex.stations.map(station => {
-                                                return <>
-                                                    <SidebarMenuItem>
-                                                        <SidebarMenuButton asChild>
-                                                            <div className="flex h-fit" onClick={() => { setCurrentStation(station) }}>
-                                                                <div className="flex flex-col w-full text-left h-fit !items-start gap-0">
-                                                                    <span className="flex-1">{station.labels.label}</span>
-                                                                    <span className="text-xs text-muted-foreground">{multiplex.channel}</span>
+                                            {
+                                                multiplex.stations.map(station => {
+                                                    return <>
+                                                        <SidebarMenuItem>
+                                                            <SidebarMenuButton asChild>
+                                                                <div className="flex h-fit" onClick={() => { setCurrentStation(station) }}>
+                                                                    <div className="flex flex-col w-full text-left h-fit !items-start gap-0">
+                                                                        <span className="flex-1">{station.labels.label}</span>
+                                                                        <span className="text-xs text-muted-foreground">{multiplex.channel}</span>
+                                                                    </div>
+                                                                    <Star></Star>
                                                                 </div>
-                                                                <Star></Star>
-                                                            </div>
-                                                        </SidebarMenuButton >
-                                                    </SidebarMenuItem>
-                                                    <Separator />
-                                                </>
-                                            })
-                                        }
+                                                            </SidebarMenuButton >
+                                                        </SidebarMenuItem>
+                                                        <Separator />
+                                                    </>
+                                                })
+                                            }
 
-                                    </SidebarMenu>
-                                </SidebarGroupContent>
-                            </SidebarGroup>
+                                        </SidebarMenu>
+                                    </SidebarGroupContent>
+                                </SidebarGroup>
+                            </>
+                        })
+                        :
+                        <>
+                            <span className="pl-2">Searching for stations...</span>
                         </>
-                    })
                 }
 
             </SidebarContent >

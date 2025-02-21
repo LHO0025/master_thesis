@@ -22,7 +22,7 @@ function App() {
     setMultiplexes(services)
 
 
-    console.log("Devices information", devicesInformation)
+    // console.log("Devices information", devicesInformation)
   }, [devicesInformation])
 
 
@@ -42,7 +42,7 @@ function App() {
 
     fetchData();
 
-    const intervalId = setInterval(fetchData, 1000);
+    const intervalId = setInterval(fetchData, 3000);
     return () => clearInterval(intervalId);
   }, []);
 

@@ -45,7 +45,6 @@ def info():
             print(f"Error fetching data from {url}: {e}")
             return ERROR_MESSAGE_GENERIC, 500
 
-
     return jsonify({"devices": jsons})
 
 

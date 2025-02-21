@@ -2,7 +2,7 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL
 const BASE_SERVER_URL = import.meta.env.VITE_SERVER_BASE_URL
 
 export function fetchBufferSize(ssid, port) {
-    return fetch(BASE_SERVER_URL + ":" + port + "/buffer_size/" + ssid)
+    return fetch(SERVER_URL + "/buffer_size/" + port + "/" + ssid)
 }
 
 export function fetchStationInfo() {
@@ -14,8 +14,7 @@ export function fetchSlideshow(ssid) {
 }
 
 export function retune(channel, port) {
-    return fetch(BASE_SERVER_URL + ":" + port + "/channel", {
-        method: "POST",
-        body: channel,
+    return fetch(SERVER_URL + "/retune/" + port + "/" + channel, {
+        method: "POST"
     });
 }

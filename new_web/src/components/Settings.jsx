@@ -5,7 +5,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as RadioService from "../services/radio_service";
 
 const DAB_CHANNELS = [
@@ -31,10 +31,14 @@ const Settings = ({ devicesInformation, setDevicesInformation }) => {
     //     setAvailableDevices(updatedDevices)
     // }
 
-    function handleSelectDevice(deviceId) {
-        console.log("zxzxzx")
-        setSelectedDevice(deviceId)
-        let device = devicesInformation.find(device => { return device.deviceId == deviceId })
+    useEffect(() => {
+        console.log(selectedDevice)
+    }, [selectedDevice])
+
+
+    function handleSelectDevice(port) {
+        setSelectedDevice(port)
+        let device = devicesInformation.find(device => { return device.port == port })
         if (device) {
             setSelectedChannel(device.tunedChannel)
         }
@@ -42,10 +46,10 @@ const Settings = ({ devicesInformation, setDevicesInformation }) => {
 
     function handleSelectChannel(channel) {
         setSelectedChannel(channel)
-        let device = devicesInformation.find(device => { return device.deviceId == selectedDevice })
+        let device = devicesInformation.find(device => { return device.port == selectedDevice })
         if (device) {
             setDevicesInformation((prevDevices) =>
-                prevDevices.filter((_device) => _device.deviceId !== device.deviceId)
+                prevDevices.filter((_device) => _device.port !== device.port)
             );
 
             RadioService.retune(channel, device.port)
@@ -56,7 +60,7 @@ const Settings = ({ devicesInformation, setDevicesInformation }) => {
     }
 
     return (
-        <div className="w-full h-full">
+        <div className="w-full h-full mt-[300px]">
             <div className="flex gap-4">
                 <Select onValueChange={handleSelectDevice} value={selectedDevice}>
                     <SelectTrigger className="w-[180px]">
@@ -65,7 +69,7 @@ const Settings = ({ devicesInformation, setDevicesInformation }) => {
                     <SelectContent>
                         {
                             devicesInformation.map((device, index) => {
-                                return <SelectItem value={device.deviceId}>Device {index}</SelectItem>
+                                return <SelectItem value={device.port}>Device {index}</SelectItem>
                             })
                         }
                     </SelectContent>
@@ -95,7 +99,6 @@ const Settings = ({ devicesInformation, setDevicesInformation }) => {
                     </Select>
                 }
             </div>
-
         </div >
     )
 }
