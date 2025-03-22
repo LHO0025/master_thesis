@@ -1,34 +1,106 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Slider } from "@/components/ui/slider"
-import * as RadioService from "../services/radio_service"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { RadioTower } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import * as RadioService from "../services/radio_service";
 import { Button } from './ui/button';
 
 const LIVE_AUDIO_OFFFSET = 240000
-
 const SAMPLE_RATE = 48000;
-const Player = ({ currentStation }) => {
-  const [bufferSize, setBufferSize] = useState(86400000)
+const SERVER_URL = import.meta.env.VITE_SERVER_URL
+
+const Player = ({ currentStation, multiplexes }) => {
   const [streamURL, setStreamURL] = useState("")
-  const [currentIndex, setCurrentIndex] = useState(LIVE_AUDIO_OFFFSET)
-  const audioRef = useRef(null);
+  const [bufferSize, setBufferSize] = useState(86400000)
 
-
+  const [currentStationSid, setCurrentStationSid] = useState("")
+  const [currentStationPort, setCurrentStationPort] = useState(0)
 
   useEffect(() => {
-    RadioService.fetchBufferSize(currentStation.sid)
+    let multiplex = multiplexes.find(multiplex =>
+      multiplex.stations.some(station => station.sid == currentStation.sid)
+    )
+    if (multiplex) {
+      setCurrentStationSid(currentStation.sid)
+      setCurrentStationPort(multiplex.port)
+    }
+  }, [multiplexes, currentStation.sid])
+
+  useEffect(() => {
+    if (!currentStationSid || !currentStationPort) { return }
+    console.log("qqqqqqqq")
+    RadioService.fetchBufferSize(currentStationSid, currentStationPort)
       .then(res => res.json())
       .then(res => {
+        // console.log("buffer", res)
         setBufferSize(res.bufferSize)
         setPlaybackValue(getPlaybackTimeInMs(res.bufferSize))
+        setStreamURL(SERVER_URL + "/cache_mp3/" + currentStationPort + "/" + currentStation.sid + "/" + LIVE_AUDIO_OFFFSET)
       })
       .catch(e => {
         console.log("error", e)
       })
+  }, [currentStationSid, currentStationPort])
 
-    setStreamURL("http://localhost:7979/cache_mp3/" + currentStation.sid + "/" + LIVE_AUDIO_OFFFSET)
-  }, [currentStation])
+
+
+
+  // useEffect(() => {
+  //   RadioService.fetchBufferSize(currentStation.sid)
+  //     .then(res => res.json())
+  //     .then(res => {
+  //       console.log("buffer", res)
+  //       // setBufferSize(res.bufferSize)
+  //       // setPlaybackValue(getPlaybackTimeInMs(res.bufferSize))
+  //     })
+  //     .catch(e => {
+  //       console.log("error", e)
+  //     })
+  // }, [currentStation])
+
+
+
+  const [currentIndex, setCurrentIndex] = useState(LIVE_AUDIO_OFFFSET)
+  const audioRef = useRef(null);
+  const [slideshowSrc, setSlideshowSrc] = useState("")
+
+
+  // useEffect(() => {
+  //   RadioService.fetchBufferSize(currentStation.sid)
+  //     .then(res => res.json())
+  //     .then(res => {
+  //       setBufferSize(res.bufferSize)
+  //       setPlaybackValue(getPlaybackTimeInMs(res.bufferSize))
+  //     })
+  //     .catch(e => {
+  //       console.log("error", e)
+  //     })
+
+  //   setStreamURL("http://localhost:7979/cache_mp3/" + currentStation.sid + "/" + LIVE_AUDIO_OFFFSET)
+
+
+  //   const fetchImage = async () => {
+  //     try {
+  //       const response = await RadioService.fetchSlideshow(currentStation.sid);
+
+  //       if (!response.ok) {
+  //         throw new Error();
+  //       }
+
+  //       const blob = await response.blob();
+  //       const newImageSrc = URL.createObjectURL(blob);
+  //       setSlideshowSrc(newImageSrc)
+  //     } catch (error) {
+  //       setSlideshowSrc("")
+  //     }
+  //   };
+
+  //   const interval = setInterval(() => {
+  //     fetchImage();
+  //   }, 10_000);
+
+  //   return () => clearInterval(interval);
+  // }, [currentStation])
 
   function formatTime(milliseconds) {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -48,26 +120,35 @@ const Player = ({ currentStation }) => {
   function onValueCommit(value) {
     let newIndex = (((getPlaybackTimeInMs(bufferSize) - value) * SAMPLE_RATE) / 1000) + LIVE_AUDIO_OFFFSET
     setCurrentIndex(newIndex)
-    setStreamURL("http://localhost:7979/cache_mp3/" + currentStation.sid + "/" + newIndex)
+    setStreamURL(SERVER_URL + "/cache_mp3/" + currentStationPort + "/" + currentStation.sid + "/" + newIndex)
   }
 
-  function mute() {
-    audioRef.current.muted = true
+  function toggleMute() {
+    audioRef.current.muted = !audioRef.current.muted
   }
 
-  function playLive() {
-    setStreamURL("http://localhost:7979/mp3/" + currentStation.sid + "/" + LIVE_AUDIO_OFFFSET)
+  function handleVolumeChange(value) {
+    console.log(value)
+    audioRef.current.volume = value
   }
 
   return (
-    <div className='flex flex-col gap-8 mt-8 items-start' >
+    <div className='flex flex-col gap-8 mt-8 items-start'>
+      {currentStation.station_text}
+
+
       <audio ref={audioRef} src={streamURL} className='hidden' controls autoPlay />
-      <Button onClick={mute}>Mute</Button>
+
+      <Button onClick={toggleMute}>Toggle mute</Button>
       {
         'Playback: -' + formatTime(playbackValue)
       }
       <Slider max={getPlaybackTimeInMs(bufferSize)} value={[playbackValue]} onValueChange={setPlaybackValue} onValueCommit={onValueCommit} step={1000} />
+      <Slider onValueChange={handleVolumeChange} defaultValue={[0.5]} max={1} step={0.01} />
+
       {currentIndex == LIVE_AUDIO_OFFFSET && <Badge variant="destructive" className="gap-2"><RadioTower size={16}></RadioTower>Live</Badge>}
+
+      {slideshowSrc && <img src={slideshowSrc} alt="Logo" />}
     </div>
   )
 }

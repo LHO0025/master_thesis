@@ -1,13 +1,13 @@
 {
     "compilerOptions": {
-      "target": "es6",
-      "module": "commonjs",
-      "baseUrl": "./src",
+      "baseUrl": ".",
       "paths": {
-        "@/*": ["./*"]
+        "@/*": ["./src/*"]
       },
       "checkJs": true,
-      "jsx": "react-jsx"
-    },
-    "include": ["src"]
-  }
+      "jsx": "react-jsx",
+      "target": "esnext",
+      "module": "esnext",
+    }
+}
+  
