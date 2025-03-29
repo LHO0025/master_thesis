@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils"
-import { setSelectedStation } from "@/state/devicesSlice"
+import { setSelectedStation } from "@/state/selectedStationSlice"
 import { useAppDispatch, useAppSelector } from "@/state/store"
 
 const StationsList = () => {
-  const { availableDevices, selectedStation } = useAppSelector((state) => state.devicesSlice)
+  const availableDevices = useAppSelector((state) => state.devicesSlice.availableDevices)
+  const selectedStation = useAppSelector((state) => state.selectedStationSlice.station)
   const dispatch = useAppDispatch()
 
   return (

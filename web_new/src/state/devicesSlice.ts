@@ -4,21 +4,16 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 interface DevicesState {
     availableDevices: Device[];
-    selectedStation: Station | null;
 }
 
 const initialState: DevicesState = {
     availableDevices: [],
-    selectedStation: null
 };
 
 const devicesSlice = createSlice({
     name: 'mySlice',
     initialState,
     reducers: {
-        setSelectedStation: (state, action) => {
-            state.selectedStation = action.payload;
-        }
     },
     extraReducers: (builder) => {
         builder.addCase(fetchStationsInfo.fulfilled, (state, action) => {
@@ -47,7 +42,7 @@ export const fetchStationsInfo = createAsyncThunk(
                     genre: service.ptystring,
                 }
             })
-            
+
             _device.stations = stations;
             return _device
         })
@@ -55,5 +50,5 @@ export const fetchStationsInfo = createAsyncThunk(
     },
 )
 
-export const { setSelectedStation } = devicesSlice.actions;
+export const { } = devicesSlice.actions;
 export default devicesSlice.reducer;

@@ -1,10 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
 import devicesReducer from "./devicesSlice";
+import selectedStationReducer from "./selectedStationSlice";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 
 export const store = configureStore({
     reducer: {
-        devicesSlice: devicesReducer
+        devicesSlice: devicesReducer,
+        selectedStationSlice: selectedStationReducer
     },
 });
 

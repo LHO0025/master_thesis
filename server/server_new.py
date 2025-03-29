@@ -46,6 +46,29 @@ def stream_cached_audio(port, sid, offset):
 
     return Response(stream_with_context(generate_audio_stream()), content_type="audio/mpeg")
 
+
+
+@app.route('/cache_dls_data', methods = ['POST'])
+def stream_cached_dls_data():
+    data = json.loads(request.data)
+    
+    sid = data.get("sid")
+    port = data.get("port")
+    time = data.get("time")
+
+    print("SID", sid)
+    print("port", port)
+    print("time", time)
+
+    try:
+        response = requests.get('http://localhost:' + str(port) + "/cached_dls_data/" + str(sid) + "/" + str(time))
+        return jsonify(response.json())
+
+    except (requests.RequestException, ValueError) as e:
+        print(f"Error fetching data: {e}")
+        return ERROR_MESSAGE_GENERIC, 500
+    
+
 @app.route('/info')
 def get_info():
     jsons = []
