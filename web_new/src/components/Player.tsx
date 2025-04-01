@@ -1,6 +1,6 @@
-import { fetchBufferSize, fetchStationText } from "@/state/selectedStationSlice"
+import { API, BASE_URL } from "@/api"
+import { fetchBufferedDls, setBufferedImageUrl } from "@/state/selectedStationSlice"
 import { useAppDispatch, useAppSelector } from "@/state/store"
-import { Utils } from "@/utils/utils"
 import { Pause, Play, Volume2, VolumeX } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AspectRatio } from "./ui/aspect-ratio"
@@ -10,30 +10,16 @@ import { Slider } from "./ui/slider"
 
 // /cache_mp3/7980/0x2fb5/240000
 
-const BASE_URL = "http://localhost:5000"
-const DEFAULT_LIVE_OFFSET = 240000
+const DEFAULT_LIVE_OFFSET_MS = 10_000
 const STATION_DATA_POLLING_RATE = 5000
 
 const Player = () => {
+    const intervalId = useRef<any>(null)
     // TODO make sure check if the selected station is changing during refetch
-    const { station: selectedStation, availablePlaybackTimeMs, currentText } = useAppSelector((state) => state.selectedStationSlice)
+    const { station: selectedStation, availablePlaybackTimeMs, currentDls, bufferedImageUrl } = useAppSelector((state) => state.selectedStationSlice)
     const dispatch = useAppDispatch()
 
-    const [liveAudioOffset, setLiveAudioOffset] = useState<number>(DEFAULT_LIVE_OFFSET)
-
-
-    useEffect(() => {
-        if (selectedStation) {
-            setAudioSrc(BASE_URL + "/cache_mp3/7980/" + selectedStation.sid + "/" + liveAudioOffset)
-        }
-    }, [liveAudioOffset, selectedStation])
-
-
-    useEffect(() => {
-        if (selectedStation) {
-            dispatch(fetchBufferSize({ sid: selectedStation.sid, port: "7980" }))
-        }
-    }, [selectedStation])
+    const [liveAudioOffsetMs, setLiveAudioOffsetMs] = useState<number>(DEFAULT_LIVE_OFFSET_MS)
 
 
     const audioElementRef = useRef<HTMLAudioElement | null>(null)
@@ -44,9 +30,27 @@ const Player = () => {
     const [playbackTime, setPlaybackTime] = useState(30)
     const [isMuted, setIsMuted] = useState(false)
 
-    useEffect(() => {
 
-    }, [liveAudioOffset])
+    useEffect(() => {
+        setLiveAudioOffsetMs(DEFAULT_LIVE_OFFSET_MS)
+        if (selectedStation) {
+            dispatch(fetchBufferedDls({ sid: selectedStation.sid, port: selectedStation.port, time: Math.round((Date.now() - liveAudioOffsetMs) / 1000) }))
+            dispatch(setBufferedImageUrl(API.getBufferedSlideUrl(selectedStation.sid, selectedStation.port, Math.round(Date.now() / 1000))))
+        }
+
+        intervalId.current = setInterval(() => {
+            if (selectedStation) {
+                dispatch(setBufferedImageUrl(API.getBufferedSlideUrl(selectedStation.sid, selectedStation.port, Math.round((Date.now() - liveAudioOffsetMs) / 1000))))
+                dispatch(fetchBufferedDls({ sid: selectedStation.sid, port: selectedStation.port, time: Math.round(Date.now() / 1000) }))
+            }
+        }, 5_000)
+
+        return () => {
+            clearInterval(intervalId.current)
+        }
+    }, [selectedStation])
+
+
 
 
     useEffect(() => {
@@ -100,39 +104,31 @@ const Player = () => {
     }
 
     const [isLiveAudio, setIsLiveAudio] = useState<boolean>(true)
-    const radioDataInterval = useRef<any>(null)
 
-    useEffect(() => {
-        if (selectedStation) {
-            radioDataInterval.current = setInterval(() => {
-                let time = (Date.now() / 1000) - Math.floor((liveAudioOffset / 48000))
-                dispatch(fetchStationText({ sid: selectedStation.sid, port: "7980", time: time.toString() }))
-            }, STATION_DATA_POLLING_RATE)
+    // useEffect(() => {
+    //     if (selectedStation) {
 
-            let time = (Date.now() / 1000) - Math.floor((liveAudioOffset / 48000))
-            dispatch(fetchStationText({ sid: selectedStation.sid, port: "7980", time: time.toString() }))
-        }
 
-        return () => {
-            clearInterval(radioDataInterval.current)
-        }
-    }, [liveAudioOffset])
+    //         let time = (Date.now() / 1000) - Math.floor((liveAudioOffset / 48000))
+    //         dispatch(fetchStationText({ sid: selectedStation.sid, port: "7980", time: time.toString() }))
+    //     }
+
+    //     return () => {
+
+    //     }
+    // }, [liveAudioOffset])
 
 
     function handleChangePlaybackTimeCommited(timeSeconds: number) {
-        setLiveAudioOffset(Utils.MsToSampleCount(48000, timeSeconds * 1000))
+        // setLiveAudioOffset(Utils.MsToSampleCount(48000, timeSeconds * 1000))
     }
 
     function handleChangeIsLive(value: boolean) {
         setIsLiveAudio(value)
         if (value) {
-            setLiveAudioOffset(DEFAULT_LIVE_OFFSET)
+            // setLiveAudioOffset(DEFAULT_LIVE_OFFSET)
         }
     }
-
-    useEffect(() => {
-        console.log(playbackTime)
-    }, [playbackTime])
 
 
     //12600000
@@ -141,23 +137,22 @@ const Player = () => {
     return (
         <div className="w-xl mx-auto bg-card rounded-xl shadow-lg overflow-hidden ">
             {
-                audioSrc &&
-                <audio ref={audioElementRef} src={audioSrc} autoPlay>
+                selectedStation &&
+                <audio ref={audioElementRef} src={`${BASE_URL}/buffered_mp3?sid=${selectedStation?.sid}&port=${selectedStation?.port}&offsetMs=${liveAudioOffsetMs}`} autoPlay>
                 </audio>
             }
 
             <AspectRatio ratio={3 / 2} >
                 <img
-                    src="https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?w=800&dpr=2&q=80"
+                    src={bufferedImageUrl}
                     alt="Photo by Drew Beamer"
                     className="h-full w-full rounded-md object-cover"
                 />
             </AspectRatio>
 
-
             <div className="p-5 space-y-4">
                 <div>
-                    <h2 className="text-xl font-bold truncate">{currentText}</h2>
+                    <h2 className="text-xl font-bold truncate">{currentDls}</h2>
                     <p className="text-muted-foreground truncate">{selectedStation?.name}</p>
                 </div>
 

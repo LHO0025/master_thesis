@@ -3,4 +3,5 @@ export interface Station {
     name: string
     currentText: string
     genre: string
+    port: string
 }

@@ -1,3 +1,4 @@
+import { API } from '@/api';
 import { Station } from '@/models/station';
 import { Utils } from '@/utils/utils';
 import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
@@ -6,13 +7,15 @@ import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 interface SelectedStationState {
     station: Station | null
     availablePlaybackTimeMs: number
-    currentText: string
+    currentDls: string
+    bufferedImageUrl: string
 }
 
 const initialState: SelectedStationState = {
     station: null,
     availablePlaybackTimeMs: 0,
-    currentText: ""
+    currentDls: "",
+    bufferedImageUrl: ""
 };
 
 const selectedStationSlice = createSlice({
@@ -21,7 +24,9 @@ const selectedStationSlice = createSlice({
     reducers: {
         setSelectedStation(state, action: PayloadAction<Station>) {
             state.station = action.payload
-
+        },
+        setBufferedImageUrl(state, action: PayloadAction<string>) {
+            state.bufferedImageUrl = action.payload
         }
     },
     extraReducers: (builder) => {
@@ -29,8 +34,8 @@ const selectedStationSlice = createSlice({
             state.availablePlaybackTimeMs = action.payload;
         });
 
-        builder.addCase(fetchStationText.fulfilled, (state, action: PayloadAction<string>) => {
-            state.currentText = action.payload;
+        builder.addCase(fetchBufferedDls.fulfilled, (state, action: PayloadAction<string>) => {
+            state.currentDls = action.payload;
         });
     }
 });
@@ -48,15 +53,13 @@ export const fetchBufferSize = createAsyncThunk(
     },
 )
 
-export const fetchStationText = createAsyncThunk(
-    'selectedStation/fetchStationText',
-    async ({ sid, port, time }: { sid: string, port: string, time: string }) => {
+export const fetchBufferedDls = createAsyncThunk(
+    'selectedStation/fetchBufferedDls',
+    async ({ sid, port, time }: { sid: string, port: string, time: number }) => {
         try {
-            const response: any = await (await fetch(`http://localhost:5000/cache_dls_data`, {
-                method: "POST",
-                body: JSON.stringify({ sid: sid, port: port, time: time }),
-            })).json();
-            return response.data
+            const response: any = await API.fetchBufferedDls(sid, port, time)
+            const responseJson = await response.json()
+            return responseJson.data
         } catch (error) {
             console.error(error)
         }
@@ -64,5 +67,5 @@ export const fetchStationText = createAsyncThunk(
     },
 )
 
-export const { setSelectedStation } = selectedStationSlice.actions;
+export const { setSelectedStation, setBufferedImageUrl } = selectedStationSlice.actions;
 export default selectedStationSlice.reducer;

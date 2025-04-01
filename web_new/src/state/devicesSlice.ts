@@ -31,7 +31,8 @@ export const fetchStationsInfo = createAsyncThunk(
                 id: '0',
                 label: 'label',
                 stations: [],
-                tunedChannel: device.tunedChannel
+                tunedChannel: device.tunedChannel,
+                port: device.port
             }
 
             let stations: Station[] = device.services.map((service: any) => {
@@ -40,6 +41,7 @@ export const fetchStationsInfo = createAsyncThunk(
                     name: service.label.label,
                     currentText: service.dls.label,
                     genre: service.ptystring,
+                    port: device.port
                 }
             })
 

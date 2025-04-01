@@ -5,4 +5,5 @@ export interface Device {
     label: string
     stations: Station[]
     tunedChannel: string
+    port: string
 }
