@@ -14,8 +14,11 @@ import jwt
 import datetime
 from functools import wraps
 from Auth import Auth
+from itertools import zip_longest
+
 app = Flask(__name__)
 app = Flask(__name__, static_folder="assets", template_folder="templates")
+
 CORS(app)
 
 start_port = 7980
@@ -35,7 +38,7 @@ CHANNELS = [
     "11A", "11B", "11C", "11D",
     "12A", "12B", "12C", "12D",
     "13A", "13B", "13C", "13D", "13E", "13F"
-];
+]
 
 def token_required(f):
     @wraps(f)
@@ -61,12 +64,9 @@ def token_required(f):
 @app.route('/buffered_mp3')
 def stream_cached_audio():
 
-
     port = request.args.get('port')
     sid = request.args.get('sid')
     offsetMs = request.args.get('offsetMs')
-
-
 
     def generate_audio_stream():
         with requests.get(f'http://localhost:{port}/buffered_mp3?sid={sid}&offsetMs={offsetMs}', stream=True) as r:
@@ -127,9 +127,6 @@ def login():
     username = data.get("userName")
     password = data.get("password")
 
-    print("password", password)
-    print("username", username)
-
     if auth.validate_credentials(username, password):
         token = auth.generate_token(username)
         return jsonify({"token": token})
@@ -183,10 +180,13 @@ def user(port, channel):
           return 500
     return 200
 
-@app.route('/buffer_size/<port>/<sid>')
-def get_buffer_size(port, sid):
+@app.route('/playback_time')
+def get_buffer_size():
     try:
-        url = f'http://localhost:{port}/buffer_size/{sid}'
+        port = request.args.get('port')
+        sid = request.args.get('sid')
+
+        url = f'http://localhost:{port}/playback_time/{sid}'
         response = requests.get(url, timeout=5)  # Set a timeout
         response.raise_for_status()  # Raise an exception for HTTP errors
         return jsonify(response.json())  # Ensure JSON response
@@ -225,29 +225,47 @@ if __name__ == '__main__':
     channels = args.channels
     rtl_tcp_ips = args.rtl_tcp
 
-    # Check if RTL_TCP ports are provided and validate their length
-    if rtl_tcp_ips and len(rtl_tcp_ips) != len(channels):
-        print("Error: The number of RTL_TCP ports must match the number of channels.", file=sys.stderr)
-        sys.exit(1)
 
-    print("Channels specified:", channels)
-    print(rtl_tcp_ips)
 
-    _port = start_port
-    if rtl_tcp_ips != None:
-        for channel, ip in zip(channels, rtl_tcp_ips):
-            print("rtl_tcp," + ip)
-            process = subprocess.Popen(["./welle-cli", "-F", "rtl_tcp," + ip, "-c", channel, "-Dw", str(_port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            _port += 1
-            subprocesses.append(process)
 
-            threading.Thread(target=read_output, args=(process, "stdout"), daemon=True).start()
-            threading.Thread(target=read_output, args=(process, "stderr"), daemon=True).start()
+    port = start_port
+    rtl_tcp_port = 1250
+    device_index = 0
+    for channel, ip in zip_longest(channels, rtl_tcp_ips, fillvalue=None):
+        if ip is None:
+            subprocess.Popen(["./rtl_tcp", "-d", str(device_index), "-p", str(rtl_tcp_port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ip = "localhost:" + str(rtl_tcp_port - 1)
+            rtl_tcp_port += 1
+            device_index += 1
 
+        process = subprocess.Popen(["./welle-cli", "-F", "rtl_tcp," + ip, "-c", channel, "-Dw", str(port), "-b", "600"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        port += 1
+
+        subprocesses.append(process)
+        threading.Thread(target=read_output, args=(process, "stdout"), daemon=True).start()
+        threading.Thread(target=read_output, args=(process, "stderr"), daemon=True).start()
 
     threading.Thread(target=app.run, daemon=True).start()
 
     for process in subprocesses:
         process.wait()
+
+    app.run()
+    
+    # if rtl_tcp_ips != None:
+    #     for channel, ip in zip(channels, rtl_tcp_ips):
+    #         print("rtl_tcp," + ip)
+            # process = subprocess.Popen(["./welle-cli", "-F", "rtl_tcp," + ip, "-c", channel, "-Dw", str(_port), "-b", "600"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # _port += 1
+            # subprocesses.append(process)
+
+            # threading.Thread(target=read_output, args=(process, "stdout"), daemon=True).start()
+            # threading.Thread(target=read_output, args=(process, "stderr"), daemon=True).start()
+
+
+    # threading.Thread(target=app.run, daemon=True).start()
+
+    # for process in subprocesses:
+    #     process.wait()
 
     # app.run()

@@ -1,6 +1,6 @@
-import { store } from "./state/store"
+import { store } from "./state/store";
 
-export const BASE_URL = "http://localhost:5000"
+export const BASE_URL = import.meta.env.VITE_SERVER_URL;
 
 function getBufferedSlideUrl(sid: string, port: string, time: number) {
     return `${BASE_URL}/buffered_slide?sid=${sid}&port=${port}&time=${time}`
@@ -17,6 +17,10 @@ function retune(port: string, channel: string) {
             'Authorization': store.getState().userSlice.user?.token ?? ""
         }
     })
+}
+
+function fetchGraph() {
+    return fetch(`http://localhost:7980/spectrum`)
 }
 
 function fetchBufferSize(sid: string, port: string) {

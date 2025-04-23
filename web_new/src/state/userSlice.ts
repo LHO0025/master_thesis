@@ -59,7 +59,7 @@ export const loginUser = createAsyncThunk(
         }
 
         return { token: responseJson.token, userName: payload.userName }
-    })
+})
 
 export const { } = userSlice.actions;
 export default userSlice.reducer

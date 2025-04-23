@@ -1,3 +1,4 @@
+import { BASE_URL } from '@/api';
 import { Device } from '@/models/device';
 import { Station } from '@/models/station';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
@@ -25,14 +26,16 @@ const devicesSlice = createSlice({
 export const fetchStationsInfo = createAsyncThunk(
     'devices/fetchInfo',
     async () => {
-        const response: any = await (await fetch(`http://localhost:5000/info`)).json();
+        const response: any = await (await fetch(`${BASE_URL}/info`)).json();
         let devices: Device[] = response.devices.map((device: any) => {
+            console.log(device)
             let _device: Device = {
                 id: '0',
                 label: 'label',
                 stations: [],
                 tunedChannel: device.tunedChannel,
-                port: device.port
+                port: device.port,
+                multiplexLabel: device?.ensemble?.label?.label ?? ""
             }
 
             let stations: Station[] = device.services.map((service: any) => {

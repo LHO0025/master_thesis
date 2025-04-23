@@ -6,4 +6,5 @@ export interface Device {
     stations: Station[]
     tunedChannel: string
     port: string
+    multiplexLabel?: string
 }

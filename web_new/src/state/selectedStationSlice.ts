@@ -1,7 +1,7 @@
-import { API } from '@/api';
+import { API, BASE_URL } from '@/api';
 import { Station } from '@/models/station';
-import { Utils } from '@/utils/utils';
 import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+
 
 
 interface SelectedStationState {
@@ -30,7 +30,7 @@ const selectedStationSlice = createSlice({
         }
     },
     extraReducers: (builder) => {
-        builder.addCase(fetchBufferSize.fulfilled, (state, action: PayloadAction<number>) => {
+        builder.addCase(fetchAvailableTime.fulfilled, (state, action: PayloadAction<number>) => {
             state.availablePlaybackTimeMs = action.payload;
         });
 
@@ -40,12 +40,13 @@ const selectedStationSlice = createSlice({
     }
 });
 
-export const fetchBufferSize = createAsyncThunk(
-    'selectedStation/fetchBufferSize',
+export const fetchAvailableTime = createAsyncThunk(
+    'selectedStation/fetchAvailableTime',
     async ({ sid, port }: { sid: string, port: string }) => {
         try {
-            const response: any = await (await fetch(`http://localhost:5000/buffer_size/${port}/${sid}`)).json();
-            return Utils.sampleCountToMs(48_000, response.bufferSize)
+            console.log("calling")
+            const response: any = await (await fetch(`${BASE_URL}/playback_time?sid=${sid}&port=${port}`)).json();
+            return response.playbackTimeMs;
         } catch (error) {
             console.error(error)
         }
