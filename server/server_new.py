@@ -29,7 +29,6 @@ SECRET_KEY = "my_secret"
 
 users = {
     "user1": "secret",
-    "user2": "mypassword"
 }
 auth = Auth(secret=SECRET_KEY, users=users)
 
@@ -61,7 +60,7 @@ def token_required(f):
     
     return decorated_function
 
-@app.route('/buffered_mp3')
+@app.route('/buffered_audio')
 def stream_cached_audio():
 
     port = request.args.get('port')
@@ -69,13 +68,13 @@ def stream_cached_audio():
     offsetMs = request.args.get('offsetMs')
 
     def generate_audio_stream():
-        with requests.get(f'http://localhost:{port}/buffered_mp3?sid={sid}&offsetMs={offsetMs}', stream=True) as r:
+        with requests.get(f'http://localhost:{port}/buffered_audio?sid={sid}&offsetMs={offsetMs}', stream=True) as r:
             r.raise_for_status() 
             for chunk in r.iter_content(chunk_size=1024):
                 if chunk:
                     yield chunk
 
-    return Response(stream_with_context(generate_audio_stream()), content_type="audio/mpeg")
+    return Response(stream_with_context(generate_audio_stream()), content_type="audio/wav")
 
 @app.route('/retune', methods = ['POST'])
 @token_required
@@ -119,6 +118,17 @@ def buffered_slide():
 
     except (requests.RequestException, ValueError) as e:
         return ERROR_MESSAGE_GENERIC, 500
+    
+@app.route('/spectrum', methods = ['GET'])
+def spectrum():    
+    port = request.args.get('port')
+    
+    try:
+        response = requests.get(f'http://localhost:{port}/spectrum')
+        return Response(response.content, content_type=response.headers['Content-Type'])
+
+    except (requests.RequestException, ValueError) as e:
+        return ERROR_MESSAGE_GENERIC, 500
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -147,7 +157,6 @@ def stream_audio():
                     yield chunk
 
     return Response(stream_with_context(generate_audio_stream()), content_type="audio/mpeg")
-
 
 @app.route('/info')
 def get_info():
@@ -187,11 +196,11 @@ def get_buffer_size():
         sid = request.args.get('sid')
 
         url = f'http://localhost:{port}/playback_time/{sid}'
-        response = requests.get(url, timeout=5)  # Set a timeout
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        return jsonify(response.json())  # Ensure JSON response
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500  # Return error response
+        return jsonify({"error": str(e)}), 500 
     
 def read_output(process, stream_name):
     for line in iter(process.stdout.readline if stream_name == "stdout" else process.stderr.readline, b''):
@@ -202,7 +211,8 @@ if __name__ == '__main__':
         description="Process channels and optionally RTL_TCP ports"
     )
 
-    # Required argument: channels
+    print("Starting...")
+
     parser.add_argument(
         '-c', '--channels',
         nargs='+',
@@ -210,8 +220,17 @@ if __name__ == '__main__':
         metavar='CHANNEL',
         help="Specify a list of channels (e.g., channel1 channel2 ...)"
     )
-    
-    # Optional argument: RTL_TCP ports
+
+
+    parser.add_argument(
+        '-p', '--playback',
+        nargs='+',
+        required=True,
+        metavar='PLAYBACK',
+        help="Specify a number of seconds for storing the audio stream"
+    )
+
+
     parser.add_argument(
         '-rtl_tcp',
         nargs='+',
@@ -220,52 +239,57 @@ if __name__ == '__main__':
         help="Optionally specify a list of RTL_TCP IPs matching the number of channels"
     )
     
+    parser.add_argument(
+        '-u', '--users',
+        nargs='+',
+        metavar='USER',
+        help="Specify users in the format username:password (e.g., user1:pass1 user2:pass2)"
+    )
+
+
     args = parser.parse_args()
 
     channels = args.channels
     rtl_tcp_ips = args.rtl_tcp
 
-
+    if rtl_tcp_ips is None:
+        rtl_tcp_ips = []
 
 
     port = start_port
     rtl_tcp_port = 1250
     device_index = 0
+
+    if args.users:
+        for user_entry in args.users:
+            if ':' not in user_entry:
+                print(f"Invalid user entry: {user_entry}. Must be in format username:password")
+                continue
+            username, password = user_entry.split(':', 1)
+            users[username] = password
+    else:
+        users['admin'] = 'admin'
+
+
     for channel, ip in zip_longest(channels, rtl_tcp_ips, fillvalue=None):
         if ip is None:
-            subprocess.Popen(["./rtl_tcp", "-d", str(device_index), "-p", str(rtl_tcp_port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.Popen(["rtl_tcp", "-d", str(device_index), "-p", str(rtl_tcp_port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ip = "localhost:" + str(rtl_tcp_port - 1)
             rtl_tcp_port += 1
             device_index += 1
 
-        process = subprocess.Popen(["./welle-cli", "-F", "rtl_tcp," + ip, "-c", channel, "-Dw", str(port), "-b", "600"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(["./welle-cli", "-F", "rtl_tcp," + ip, "-c", channel, "-Dw", str(port), "-b", args.playback[0]], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         port += 1
 
         subprocesses.append(process)
         threading.Thread(target=read_output, args=(process, "stdout"), daemon=True).start()
         threading.Thread(target=read_output, args=(process, "stderr"), daemon=True).start()
 
-    threading.Thread(target=app.run, daemon=True).start()
+    threading.Thread(
+        target=app.run,
+        kwargs={"host": "0.0.0.0", "port": 5000},
+        daemon=True
+    ).start()
 
     for process in subprocesses:
         process.wait()
-
-    app.run()
-    
-    # if rtl_tcp_ips != None:
-    #     for channel, ip in zip(channels, rtl_tcp_ips):
-    #         print("rtl_tcp," + ip)
-            # process = subprocess.Popen(["./welle-cli", "-F", "rtl_tcp," + ip, "-c", channel, "-Dw", str(_port), "-b", "600"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # _port += 1
-            # subprocesses.append(process)
-
-            # threading.Thread(target=read_output, args=(process, "stdout"), daemon=True).start()
-            # threading.Thread(target=read_output, args=(process, "stderr"), daemon=True).start()
-
-
-    # threading.Thread(target=app.run, daemon=True).start()
-
-    # for process in subprocesses:
-    #     process.wait()
-
-    # app.run()
